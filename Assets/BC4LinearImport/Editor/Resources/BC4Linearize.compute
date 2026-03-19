@@ -1,0 +1,63 @@
+// Converts grayscale-authored sRGB source texels into linear grayscale output for the BC4 import pipeline.
+#pragma kernel BC4Linearize
+
+Texture2D<float4> _Source;
+RWTexture2D<float4> _Destination;
+
+uint2 _TextureSize;
+
+/// <summary>
+/// Converts a single normalized sRGB channel value into linear space.
+/// </summary>
+/// <param name="srgbValue">The normalized sRGB-authored channel value.</param>
+/// <returns>The corresponding linear-space value.</returns>
+float ConvertSrgbChannelToLinear(float srgbValue)
+{
+    srgbValue = saturate(srgbValue);
+    if (srgbValue <= 0.04045f)
+    {
+        return srgbValue / 12.92f;
+    }
+
+    return pow((srgbValue + 0.055f) / 1.055f, 2.4f);
+}
+
+/// <summary>
+/// Loads the canonical grayscale source value for the current texel.
+/// </summary>
+/// <param name="pixelCoord">The absolute pixel coordinate in dispatch space.</param>
+/// <returns>The red-channel source value, used as the BC4 grayscale representative.</returns>
+float LoadSourceGrayscale(uint2 pixelCoord)
+{
+    return _Source[pixelCoord].r;
+}
+
+/// <summary>
+/// Builds the linearized destination texel while keeping the output grayscale in spirit.
+/// </summary>
+/// <param name="linearValue">The converted linear grayscale value.</param>
+/// <param name="sourceAlpha">The source alpha channel.</param>
+/// <returns>A grayscale destination texel with replicated RGB channels.</returns>
+float4 CreateLinearizedDestination(float linearValue, float sourceAlpha)
+{
+    return float4(linearValue, linearValue, linearValue, sourceAlpha);
+}
+
+/// <summary>
+/// Converts grayscale-authored sRGB texels into linear grayscale output.
+/// </summary>
+/// <param name="dispatchThreadId">The absolute dispatch thread coordinate.</param>
+[numthreads(8, 8, 1)]
+void BC4Linearize(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    uint2 pixelCoord = dispatchThreadId.xy;
+    if (pixelCoord.x >= _TextureSize.x || pixelCoord.y >= _TextureSize.y)
+    {
+        return;
+    }
+
+    float4 sourceTexel = _Source[pixelCoord];
+    float grayscaleValue = LoadSourceGrayscale(pixelCoord);
+    float linearValue = ConvertSrgbChannelToLinear(grayscaleValue);
+    _Destination[pixelCoord] = CreateLinearizedDestination(linearValue, sourceTexel.a);
+}

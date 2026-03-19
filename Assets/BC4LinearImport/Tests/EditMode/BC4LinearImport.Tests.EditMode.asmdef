@@ -1,0 +1,22 @@
+{
+    "name": "BC4LinearImport.Tests.EditMode",
+    "rootNamespace": "BC4LinearImport.Tests.EditMode",
+    "references": [
+        "BC4LinearImport.Editor",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
