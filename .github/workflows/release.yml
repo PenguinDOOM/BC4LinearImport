@@ -1,0 +1,307 @@
+# Use the unprefixed semantic version of the tag
+name: Release
+on:
+  push:
+    paths:
+      - update_trigger.json
+  workflow_dispatch:
+env:
+  VPM_REPOSITORY: "BC4LinearImport"
+  PACKAGE_NAME: "jp.penguin.bc4linearimport"
+  PACKAGE_DISPLAYNAME: "BC4LinearImport"
+  PACKAGE_AUTHOR_NAME: "Penguin"
+  PACKAGE_UNITY_VERSION: "2022.3"
+  PACKAGE_DESCRIPTION: "BC4LinearImport is an editor extension that automatically converts the color space of textures from sRGB to Linear when importing BC4 files."
+  PACKAGE_CHANGELOG_FILE: "CHANGELOG.txt"
+  PACKAGE_LICENSE_FILE: "LICENSE"
+  PACKAGE_KEYWORDS: "Editor, Texture, Importer, BC4, sRGB, Linear"
+  PACKAGE_LEGACYFOLDERS: "Assets\\BC4LinearImport: "
+  FAIL_VERIFICATION_FAILED: 1
+jobs:
+  verify-commit-signature:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      vcs: ${{ steps.verify_step.outputs.vcs }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Import GPG key
+        run: |
+          echo "${{ secrets.GPG_PUBLIC_KEY }}" | gpg --import
+      - name: Verify Commit Signature
+        id: verify_step
+        run: |
+          FILE_PATH="update_trigger.json"
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
+          echo "Files changed in HEAD: $CHANGED_FILES"
+
+          if ! echo "$CHANGED_FILES" | grep -q "^$FILE_PATH$"; then
+            echo "❌ Error: Terminated"
+            echo "Reason: $FILE_PATH is not the latest commit"
+            exit 1
+          fi
+
+          LOG_OUTPUT=$(git log --show-signature -1 ./update_trigger.json)
+          echo "$LOG_OUTPUT"
+
+          if echo "$LOG_OUTPUT" | grep -q "gpg: Good signature"; then
+            verify="The signature of the triggering commit has been verified, so it should be safe."
+            echo "vcs=$verify" >> "$GITHUB_OUTPUT"
+            echo "✅ Commit signature verification successful"
+          else
+            if ${{ env.FAIL_VERIFICATION_FAILED }}; then
+              echo "❌ Error: Terminated"
+              echo "Reason: Commit signature verification failed"
+              exit 1
+            else
+              verify="The signature of the triggering commit has not been verified and may be insecure"
+              echo "vcs=$verify" >> "$GITHUB_OUTPUT"
+              echo "⚠️ Warning: Commit signature verification failed"
+            fi
+          fi
+  extract-semantic-version:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    needs: verify-commit-signature
+    outputs:
+      current_version: ${{ steps.extract_version.outputs.current_version }}
+      major: ${{ steps.extract_version.outputs.major }}
+      minor: ${{ steps.extract_version.outputs.minor }}
+      patch: ${{ steps.extract_version.outputs.patch }}
+      update_version: ${{ steps.extract_version.outputs.update_version }}
+      update_major: ${{ steps.extract_version.outputs.update_major }}
+      update_minor: ${{ steps.extract_version.outputs.update_minor }}
+      update_patch: ${{ steps.extract_version.outputs.update_patch }}
+      package_major: ${{ steps.extract_version.outputs.package_major }}
+      package_minor: ${{ steps.extract_version.outputs.package_minor }}
+      package_patch: ${{ steps.extract_version.outputs.package_patch }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-tags: true
+      - name: Fetch all tags
+        run: git fetch --tags
+      - name: Describe latest tag
+        id: describe_latest_tag
+        run: |
+          tag=$(git describe --tags `git rev-list --tags --max-count=1`) 2>/dev/null || tag="0.0.0"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - id: extract_version
+        run: |
+          tag=${{ steps.describe_latest_tag.outputs.tag }}
+          tag_without_v=${tag#v}
+
+          MAJOR=$(echo $tag_without_v | cut -d. -f1)
+          MINOR=$(echo $tag_without_v | cut -d. -f2)
+          PATCH=$(echo $tag_without_v | cut -d. -f3 | cut -d- -f1)
+
+          echo "current_version=$tag_without_v" >> "$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
+          echo "patch=$PATCH" >> "$GITHUB_OUTPUT"
+
+          echo "Detected Version: $MAJOR.$MINOR.$PATCH"
+
+          UPDATE_VERSION=$(jq -r '.version' ./update_trigger.json) 2>/dev/null || {
+          echo "❌ Error: Terminated"
+          echo "Reason: Version not found"
+          exit 1
+          }
+          UPDATE_VERSION_NO_V=${UPDATE_VERSION#v}
+
+          UPDATE_MAJOR=$(echo $UPDATE_VERSION_NO_V | cut -d. -f1)
+          UPDATE_MINOR=$(echo $UPDATE_VERSION_NO_V | cut -d. -f2)
+          UPDATE_PATCH=$(echo $UPDATE_VERSION_NO_V | cut -d. -f3 | cut -d- -f1)
+
+          echo "update_version=$UPDATE_VERSION_NO_V" >> "$GITHUB_OUTPUT"
+          echo "update_major=$UPDATE_MAJOR" >> "$GITHUB_OUTPUT"
+          echo "update_minor=$UPDATE_MINOR" >> "$GITHUB_OUTPUT"
+          echo "update_patch=$UPDATE_PATCH" >> "$GITHUB_OUTPUT"
+
+          echo "Detected Update Version: $UPDATE_MAJOR.$UPDATE_MINOR.$UPDATE_PATCH"
+
+          PACKAGE_VERSION=$(jq -r '.version' ./Assets/BC4LinearImport/package.json) 2>/dev/null || {
+          echo "❌ Error: Terminated"
+          echo "Reason: Version not found"
+          exit 1
+          }
+          PACKAGE_VERSION_NO_V=${PACKAGE_VERSION#v}
+
+          PACKAGE_MAJOR=$(echo $PACKAGE_VERSION_NO_V | cut -d. -f1)
+          PACKAGE_MINOR=$(echo $PACKAGE_VERSION_NO_V | cut -d. -f2)
+          PACKAGE_PATCH=$(echo $PACKAGE_VERSION_NO_V | cut -d. -f3 | cut -d- -f1)
+
+          echo "package_major=$PACKAGE_MAJOR" >> "$GITHUB_OUTPUT"
+          echo "package_minor=$PACKAGE_MINOR" >> "$GITHUB_OUTPUT"
+          echo "package_patch=$PACKAGE_PATCH" >> "$GITHUB_OUTPUT"
+
+          echo "Detected Package Version: $PACKAGE_MAJOR.$PACKAGE_MINOR.$PACKAGE_PATCH"
+  update:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    needs: [verify-commit-signature, extract-semantic-version]
+    env:
+      VCS: ${{ needs.verify-commit-signature.outputs.vcs }}
+      CURRENT_VERSION: ${{ needs.extract-semantic-version.outputs.current_version }}
+      MAJOR: ${{ needs.extract-semantic-version.outputs.major }}
+      MINOR: ${{ needs.extract-semantic-version.outputs.minor }}
+      PATCH: ${{ needs.extract-semantic-version.outputs.patch }}
+      UPDATE_VERSION: ${{ needs.extract-semantic-version.outputs.update_version }}
+      UPDATE_MAJOR: ${{ needs.extract-semantic-version.outputs.update_major }}
+      UPDATE_MINOR: ${{ needs.extract-semantic-version.outputs.update_minor }}
+      UPDATE_PATCH: ${{ needs.extract-semantic-version.outputs.update_patch }}
+      PACKAGE_MAJOR: ${{ needs.extract-semantic-version.outputs.package_major }}
+      PACKAGE_MINOR: ${{ needs.extract-semantic-version.outputs.package_minor }}
+      PACKAGE_PATCH: ${{ needs.extract-semantic-version.outputs.package_patch }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-tags: true
+      - name: Version check
+        run: |
+          if [[ ${{ env.UPDATE_MAJOR }} -lt ${{ env.MAJOR }} ]] || \
+            [[ ${{ env.UPDATE_MAJOR }} -eq ${{ env.MAJOR }} && ${{ env.UPDATE_MINOR }} -lt ${{ env.MINOR }} ]] || \
+            [[ ${{ env.UPDATE_MAJOR }} -eq ${{ env.MAJOR }} && ${{ env.UPDATE_MINOR }} -eq ${{ env.MINOR }} && ${{ env.UPDATE_PATCH }} -lt ${{ env.PATCH }} ]]; then
+            echo "Update Version: ${{ env.UPDATE_VERSION }}"
+            echo "Current Version: ${{ env.CURRENT_VERSION }}"
+            echo "❌ Error: Terminated"
+            echo "Reason: Downgrades are not allowed"
+            exit 1
+          fi
+          if [ ${{ env.UPDATE_MAJOR }} -eq ${{ env.MAJOR }} ] && [ ${{ env.UPDATE_MINOR }} -eq ${{ env.MINOR }} ] && [ ${{ env.UPDATE_PATCH }} -eq ${{ env.PATCH }} ]; then
+            echo "Update Version: ${{ env.UPDATE_VERSION }}"
+            echo "Current Version: ${{ env.CURRENT_VERSION }}"
+            echo "❌ Error: Terminated"
+            echo "Reason: Versions are the same"
+            exit 1
+          fi
+      - name: Update version
+        run: |
+          LATEST_ID=$(git rev-parse HEAD)
+          CHANGELOG_URL="https://github.com/${{ github.repository }}/blob/$LATEST_ID/${{ env.PACKAGE_CHANGELOG_FILE }}"
+          LICENSE_URL="https://github.com/${{ github.repository }}/blob/$LATEST_ID/${{ env.PACKAGE_LICENSE_FILE }}"
+          URL="https://github.com/${{ github.repository }}/releases/download/${{ env.UPDATE_VERSION }}/${{ env.PACKAGE_NAME }}-${{ env.UPDATE_VERSION }}.zip?"
+          LICENSE=$(gh api repos/${{ github.repository }} --jq '.license.spdx_id')
+
+          jq -n \
+              --arg name         "${{ env.PACKAGE_NAME }}" \
+              --arg display_name "${{ env.PACKAGE_DISPLAYNAME }}" \
+              --arg ver          "${{ env.UPDATE_VERSION }}" \
+              --arg author_names "${{ env.PACKAGE_AUTHOR_NAME }}" \
+              --arg unity_ver    "${{ env.PACKAGE_UNITY_VERSION }}" \
+              --arg desc         "${{ env.PACKAGE_DESCRIPTION }}" \
+              --arg cl_url       "$CHANGELOG_URL" \
+              --arg lic_url      "$LICENSE_URL" \
+              --arg license      "$LICENSE" \
+              --arg keywords_raw "${{ env.PACKAGE_KEYWORDS }}" \
+              --arg url          "$URL" \
+              --arg legacy_raw   "${{ env.PACKAGE_LEGACYFOLDERS }}" \
+              '{
+                "name": $name,
+                "displayName": $display_name,
+                "version": $ver,
+                "author": ($author_names | split(",") | map(gsub("^\\s+|\\s+$"; "")) | {name: .[0]}),
+                "unity": $unity_ver,
+                "description": $desc,
+                "changelogUrl": $cl_url,
+                "licensesUrl": $lic_url,
+                "license": $license,
+                "keywords": ($keywords_raw | split(",") | map(gsub("^\\s+|\\s+$"; ""))),
+                "url": $url,
+                "legacyFolders": ($legacy_raw | split(",") | map(split(":")) | reduce .[] as $item ({}; .[$item[0]|gsub("^\\s+|\\s+$"; "")] = ($item[1]|gsub("^\\s+|\\s+$"; ""))))
+              }' > ./Assets/BC4LinearImport/package.json.tmp
+
+          mv ./Assets/BC4LinearImport/package.json.tmp ./Assets/BC4LinearImport/package.json
+          cat Assets/BC4LinearImport/package.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Commit and push update
+        uses: suzuki-shunsuke/commit-action@v0.1.1
+        with:
+          fail_on_self_push: false
+          branch: master
+          commit_message: |
+            Updated Ver. ${{ env.UPDATE_VERSION }}
+
+            - Automatically generated by GitHub Actions.
+            - Security Check: ${{ env.VCS }}
+  release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    needs: [verify-commit-signature, extract-semantic-version, update]
+    env:
+      VCS: ${{ needs.verify-commit-signature.outputs.vcs }}
+      CURRENT_VERSION: ${{ needs.extract-semantic-version.outputs.current_version }}
+      MAJOR: ${{ needs.extract-semantic-version.outputs.major }}
+      MINOR: ${{ needs.extract-semantic-version.outputs.minor }}
+      PATCH: ${{ needs.extract-semantic-version.outputs.patch }}
+      UPDATE_VERSION: ${{ needs.extract-semantic-version.outputs.update_version }}
+      UPDATE_MAJOR: ${{ needs.extract-semantic-version.outputs.update_major }}
+      UPDATE_MINOR: ${{ needs.extract-semantic-version.outputs.update_minor }}
+      UPDATE_PATCH: ${{ needs.extract-semantic-version.outputs.update_patch }}
+      PACKAGE_MAJOR: ${{ needs.extract-semantic-version.outputs.package_major }}
+      PACKAGE_MINOR: ${{ needs.extract-semantic-version.outputs.package_minor }}
+      PACKAGE_PATCH: ${{ needs.extract-semantic-version.outputs.package_patch }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Fetch all tags
+        run: git fetch --tags
+      - name: Get commit_sha
+        id: get_commit_sha
+        run: |
+          echo "latest_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Update tag
+        uses: rickstaa/action-create-tag@v1
+        with:
+          tag: "${{ env.UPDATE_VERSION }}"
+          commit_sha: "${{ steps.get_commit_sha.outputs.latest_sha }}"
+      - name: Create zip file
+        uses: somaz94/compress-decompress@v1
+        with:
+          command: compress
+          source: ${{ github.workspace }}/Assets/BC4LinearImport/
+          dest: './dist'
+          destfilename: '${{ env.PACKAGE_NAME }}-${{ env.UPDATE_MAJOR }}.${{ env.UPDATE_MINOR }}.${{ env.UPDATE_PATCH }}'
+          exclude: '.git .github .gitattributes .gitignore dist ./update_trigger.json .vscode ./Tests ./Tests.meta'
+          format: zip
+          includeRoot: 'false'
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifactErrorsFailBuild: true
+          artifacts: "${{ github.workspace }}/dist/${{ env.PACKAGE_NAME }}-${{ env.UPDATE_VERSION }}.zip"
+          artifactContentType: zip
+          generateReleaseNotes: true
+          name: ${{ env.UPDATE_VERSION }}
+          tag: ${{ env.UPDATE_VERSION }}
+      - name: Trigger VPM Repository Workflow
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.PAT_FOR_DISPATCH }}
+          repository: ${{ github.repository_owner }}/${{ env.VPM_REPOSITORY }}
+          event-type: update-vpm
+          client-payload: '{"packageurl": "https://github.com/${{ github.repository }}/releases/download/${{ env.UPDATE_VERSION }}/${{ env.PACKAGE_NAME }}-${{ env.UPDATE_VERSION }}.zip?", "verify": "${{ env.VCS }}"}'
