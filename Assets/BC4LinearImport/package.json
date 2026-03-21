@@ -1,14 +1,14 @@
 {
   "name": "jp.penguin.bc4linearimport",
   "displayName": "BC4LinearImport",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Penguin"
   },
   "unity": "2022.3",
   "description": "BC4LinearImport is an editor extension that automatically converts the color space of textures from sRGB to Linear when importing BC4 files.",
-  "changelogUrl": "https://github.com/PenguinDOOM/BC4LinearImport/blob/90b920f42623122f8a7e31fc76ac42f32a733c68/CHANGELOG.txt",
-  "licensesUrl": "https://github.com/PenguinDOOM/BC4LinearImport/blob/90b920f42623122f8a7e31fc76ac42f32a733c68/LICENSE",
+  "changelogUrl": "https://github.com/PenguinDOOM/BC4LinearImport/blob/0ef496187a4ef3f76fbaeadb88a146a18173fc3d/CHANGELOG.txt",
+  "licensesUrl": "https://github.com/PenguinDOOM/BC4LinearImport/blob/0ef496187a4ef3f76fbaeadb88a146a18173fc3d/LICENSE",
   "license": "GPL-3.0",
   "keywords": [
     "Editor",
@@ -18,7 +18,7 @@
     "sRGB",
     "Linear"
   ],
-  "url": "https://github.com/PenguinDOOM/BC4LinearImport/releases/download/1.0.0/jp.penguin.bc4linearimport-1.0.0.zip?",
+  "url": "https://github.com/PenguinDOOM/BC4LinearImport/releases/download/1.0.1/jp.penguin.bc4linearimport-1.0.1.zip?",
   "legacyFolders": {
     "Assets\\BC4LinearImport": ""
   }
