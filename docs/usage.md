@@ -96,6 +96,8 @@ So if a texture is excluded, it will also be skipped by the reimport tools descr
 
 BC4LinearImport works automatically when eligible textures are imported. That means existing textures may need a manual repair pass if they were already in the project before your current settings were in place.
 
+If you want to see how the manual reimport path feeds back into the same automatic checks, including conditional BC4 targeting and safe no-op outcomes, see the [BC4LinearImport color-space flow diagram](diagrams/bc4linearimport-color-space-flow.svg).
+
 Run a bulk reimport when:
 
 - you just enabled `Enable BC4 linear import`

@@ -21,6 +21,8 @@ This is meant to save time when you are working with grayscale textures in a VRC
 4. If the textures were already in the project before you changed settings, run a reimport so eligible textures are processed again.
 5. If you are not sure why targeting did or did not happen, use the diagnostics menu to observe targeting behavior.
 
+For a visual map of the manual reimport path, automatic import-time path, and safe no-op outcomes, see the [BC4LinearImport color-space flow diagram](docs/diagrams/bc4linearimport-color-space-flow.svg).
+
 ## Where to find it
 
 - `Project Settings > BC4 Linear Import`
