@@ -1,1 +1,3 @@
-TEST
+2026/03/21
+Ver. 1.0.0
+- Initial release of BC4LinearImport
