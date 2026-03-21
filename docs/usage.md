@@ -1,5 +1,7 @@
 # BC4LinearImport Usage Guide
 
+**Language:** English | [日本語](usage.ja.md)
+
 This guide shows the normal day-to-day workflow for BC4LinearImport after the package is already in your Unity project.
 
 If you want the short version: open `Project Settings > BC4 Linear Import`, keep `Enable BC4 linear import` enabled, add exclusions only for textures or folders you want to skip, and run a reimport if the textures were already in the project before you changed the settings.
