@@ -1,5 +1,7 @@
 # BC4LinearImport
 
+**Language:** English | [日本語](README.ja.md)
+
 BC4LinearImport helps Unity import eligible BC4-targeted grayscale `PNG` / `JPG` / `JPEG` textures as linear data instead of sRGB.
 
 This is meant to save time when you are working with grayscale textures in a VRChat project and do not want to keep fixing import behavior by hand.
