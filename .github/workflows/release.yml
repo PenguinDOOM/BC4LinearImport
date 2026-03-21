@@ -6,7 +6,7 @@ on:
       - update_trigger.json
   workflow_dispatch:
 env:
-  VPM_REPOSITORY: "BC4LinearImport"
+  VPM_REPOSITORY: "lilToonMore"
   PACKAGE_NAME: "jp.penguin.bc4linearimport"
   PACKAGE_DISPLAYNAME: "BC4LinearImport"
   PACKAGE_AUTHOR_NAME: "Penguin"
