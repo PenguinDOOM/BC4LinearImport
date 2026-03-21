@@ -1,3 +1,8 @@
 2026/03/21
+Ver. 1.0.1
+- Added the license statement to the beginning of each file.
+
+
+2026/03/21
 Ver. 1.0.0
 - Initial release of BC4LinearImport
