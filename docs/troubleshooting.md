@@ -1,5 +1,7 @@
 # BC4LinearImport Troubleshooting
 
+**Language:** English | [日本語](troubleshooting.ja.md)
+
 This page helps you figure out why a texture did not convert, why reimport found nothing to do, and which behaviors are expected.
 
 If you want the normal workflow first, read the [usage guide](usage.md). If you want the short overview, see the [README](../README.md).
