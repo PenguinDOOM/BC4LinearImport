@@ -1,7 +1,7 @@
 # ありそうな質問
 
 ## Q: これはなに？
-A: BC4LinearImport は、Unity が BC4 に変換する際に、`PNG` / `JPG` / `JPEG` テクスチャを sRGB ではなく linear data として読み込むためのエディター拡張です。
+A: BC4LinearImport は、Unity が BC4 に変換する際に、`PNG` / `JPG` / `JPEG` テクスチャを sRGB色空間 から linear色空間 に自動変換して読み込むためのエディター拡張です。BC4 は linear色空間 のみ対応であり事前に変換しておかないと見た目がおかしくなります。
 
 ## Q: どうやって使うの？
 A: ざっくり言うと、`Project Settings > BC4 Linear Import` で設定を確認して、必要に応じて再インポートを実行してください。詳しい手順は [使い方ガイド](usage.md) を見てください。
